@@ -1,7 +1,5 @@
---extra-index-url https://pypi.org/simple
-
 streamlit
-tensorflow-cpu==2.15.0
+tensorflow
 scikit-learn
 joblib
 numpy
