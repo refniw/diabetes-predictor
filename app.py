@@ -1,13 +1,14 @@
 import streamlit as st
 import joblib
 import numpy as np
+from tensorflow.keras.models import load_model
 
 # Judul halaman
-st.set_page_config(page_title="Prediksi Diabetes", layout="centered")
-st.title("🩺 Prediksi Diabetes")
+st.set_page_config(page_title="Prediksi Diabetes LSTM", layout="centered")
+st.title("🩺 Prediksi Diabetes dengan LSTM")
 st.write("Silakan masukkan data pasien untuk prediksi.")
 
-# Formulir input
+# Form input
 with st.form("form_prediksi"):
     pregnancies = st.number_input("Jumlah Kehamilan", min_value=0, max_value=20, step=1)
     glucose = st.number_input("Kadar Glukosa", min_value=0, max_value=300)
@@ -20,22 +21,31 @@ with st.form("form_prediksi"):
 
     submitted = st.form_submit_button("Prediksi")
 
-# Proses prediksi
+# Prediksi
 if submitted:
     try:
-        # Load model
-        model = joblib.load("model_diabetes.pkl")
+        # Load scaler dan model LSTM
+        scaler = joblib.load("scaler.pkl")
+        model = load_model("model_lstm.h5")
 
-        # Siapkan data input
-        data = np.array([[pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, dpf, age]])
+        # Format input & scaling
+        input_data = np.array([[pregnancies, glucose, blood_pressure, skin_thickness,
+                                insulin, bmi, dpf, age]])
+        input_scaled = scaler.transform(input_data)
 
-        # Prediksi
-        pred = model.predict(data)
+        # Reshape ke (samples, timesteps, features)
+        input_reshaped = input_scaled.reshape((1, input_scaled.shape[1], 1))  # shape: (1, 8, 1)
+
+        # Lakukan prediksi
+        prediction = model.predict(input_reshaped)
 
         # Tampilkan hasil
-        if pred[0] == 1:
-            st.error("⚠️ Pasien diprediksi memiliki risiko diabetes.")
+        if prediction[0][0] >= 0.5:
+            st.error(f"⚠️ Pasien diprediksi berisiko diabetes (score: {prediction[0][0]:.2f})")
         else:
-            st.success("✅ Pasien tidak memiliki risiko diabetes.")
+            st.success(f"✅ Pasien tidak berisiko diabetes (score: {prediction[0][0]:.2f})")
+
+    except FileNotFoundError as e:
+        st.error(f"❌ File tidak ditemukan: {e.filename}")
     except Exception as e:
-        st.error(f"Gagal melakukan prediksi: {e}")
+        st.error(f"❌ Gagal melakukan prediksi: {e}")
